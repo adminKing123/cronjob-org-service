@@ -11,21 +11,21 @@
 
 <div class="stat-row">
   <div class="stat-box">
-    <div class="label">Filtered</div>
+    <div class="label"><i class="bi bi-funnel"></i> Filtered</div>
     <div class="value">{{ total }}</div>
   </div>
   <div class="stat-box">
-    <div class="label">Success (all)</div>
+    <div class="label"><i class="bi bi-check-circle"></i> Success (all)</div>
     <div class="value text-success">{{ success_total }}</div>
   </div>
   <div class="stat-box">
-    <div class="label">Failed (all)</div>
+    <div class="label"><i class="bi bi-x-circle"></i> Failed (all)</div>
     <div class="value text-error">{{ failed_total }}</div>
   </div>
 </div>
 
 <div class="changelist-module">
-  <h2 class="module-caption">cron-job.org → noney-api forwards</h2>
+  <h2 class="module-caption"><i class="bi bi-table"></i> cron-job.org → noney-api forwards</h2>
   <div id="toolbar">
     <form method="get" class="search-form" action="{{ url_for('admin.dashboard') }}">
       <div class="fc-item fc-status">
@@ -35,7 +35,15 @@
           <option value="success"{% if filters.status == 'success' %} selected{% endif %}>Success</option>
           <option value="failed"{% if filters.status == 'failed' %} selected{% endif %}>Failed</option>
           <option value="pending"{% if filters.status == 'pending' %} selected{% endif %}>Pending</option>
-          <option value="dispatched"{% if filters.status == 'dispatched' %} selected{% endif %}>Dispatched (proxy)</option>
+          <option value="dispatched"{% if filters.status == 'dispatched' %} selected{% endif %}>Dispatched</option>
+        </select>
+      </div>
+      <div class="fc-item fc-sort">
+        <label for="filter-sort">Sort</label>
+        <select id="filter-sort" name="sort">
+          {% for key, (label, _) in sort_options.items() %}
+          <option value="{{ key }}"{% if sort == key %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
         </select>
       </div>
       <div class="fc-item fc-text">
@@ -53,36 +61,92 @@
     </form>
   </div>
   <div class="table-scroll">
-  <table id="result_list">
+  <table id="result_list" class="cron-logs-table">
     <thead>
       <tr>
-        <th class="col-id">ID</th>
-        <th class="col-time">Time</th>
-        <th>Workflow</th>
-        <th>Owner</th>
-        <th class="col-duration">Duration</th>
-        <th class="col-status">Status</th>
-        <th class="col-action"></th>
+        <th scope="col" class="col-id">ID</th>
+        <th scope="col" class="col-time {% if sort.startswith('created') %}sorted{% endif %}">
+          <a href="{{ url_for('admin.dashboard') }}?{{ build_logs_query_string(filters, page=1, sort='created_desc' if sort != 'created_desc' else 'created_asc') }}">
+            Time
+            {% if sort == 'created_desc' %}<i class="bi bi-sort-down"></i>{% elif sort == 'created_asc' %}<i class="bi bi-sort-up"></i>{% endif %}
+          </a>
+        </th>
+        <th scope="col" class="col-workflow">Workflow</th>
+        <th scope="col" class="col-owner">Owner</th>
+        <th scope="col" class="col-mode">Mode</th>
+        <th scope="col" class="col-duration {% if sort.startswith('duration') %}sorted{% endif %}">
+          <a href="{{ url_for('admin.dashboard') }}?{{ build_logs_query_string(filters, page=1, sort='duration_desc' if sort != 'duration_desc' else 'duration_asc') }}">
+            Duration
+            {% if sort == 'duration_desc' %}<i class="bi bi-sort-numeric-down"></i>{% elif sort == 'duration_asc' %}<i class="bi bi-sort-numeric-up"></i>{% endif %}
+          </a>
+        </th>
+        <th scope="col" class="col-status">Status</th>
+        <th scope="col" class="col-action"></th>
       </tr>
     </thead>
     <tbody>
       {% for log in logs %}
       <tr>
-        <td class="col-id">{{ log.id }}</td>
-        <td class="col-time">{{ log.created_at }}</td>
-        <td><span class="cell-clip" title="{{ log.workflow_id }}">{{ log.workflow_name or log.workflow_id }}</span></td>
-        <td><span class="cell-clip">{{ log.owner_email }}</span></td>
-        <td class="col-duration">{% if log.duration_ms %}{{ log.duration_ms }} ms{% else %}—{% endif %}</td>
-        <td class="col-status">
-          <span class="status-badge {% if log.status == 'success' %}sent{% else %}failed{% endif %}">{{ log.status }}</span>
+        <td class="col-id"><a href="{{ url_for('admin.log_detail', log_id=log.id) }}">#{{ log.id }}</a></td>
+        <td class="col-time">
+          <span class="cell-clip" title="{{ log.created_at }}">{{ log.created_at_short }}</span>
         </td>
-        <td class="col-action"><a href="{{ url_for('admin.log_detail', log_id=log.id) }}">View</a></td>
+        <td class="col-workflow">
+          <span class="cell-subject" title="{{ log.workflow_id }}">{{ log.workflow_short }}</span>
+        </td>
+        <td class="col-owner">
+          <span class="cell-clip" title="{{ log.owner_email }}">{{ log.owner_short }}</span>
+        </td>
+        <td class="col-mode">
+          <span class="mode-badge {{ log.delivery_mode }}">{{ log.delivery_mode }}</span>
+        </td>
+        <td class="col-duration">
+          {% if log.duration_display %}{{ log.duration_display }}{% else %}—{% endif %}
+        </td>
+        <td class="col-status">
+          <span class="status-pill {{ log.status }}" title="{{ log.status }}">{{ log.status }}</span>
+        </td>
+        <td class="col-action">
+          <a href="{{ url_for('admin.log_detail', log_id=log.id) }}">View</a>
+        </td>
       </tr>
       {% else %}
-      <tr><td colspan="7">No logs yet.</td></tr>
+      <tr>
+        <td colspan="8" class="table-empty">
+          <i class="bi bi-inbox" aria-hidden="true"></i>
+          No trigger logs match these filters.
+        </td>
+      </tr>
       {% endfor %}
     </tbody>
   </table>
+  </div>
+
+  <div class="paginator">
+    <span><strong>{{ total }}</strong> trigger log{{ 's' if total != 1 else '' }}</span>
+    {% if pages > 1 %}
+    <span class="sep">|</span>
+    {% if page > 1 %}
+    <a href="{{ url_for('admin.dashboard') }}?{{ build_logs_query_string(filters, page=1) }}" title="First page"><i class="bi bi-chevron-double-left"></i></a>
+    <a href="{{ url_for('admin.dashboard') }}?{{ build_logs_query_string(filters, page=page-1) }}"><i class="bi bi-chevron-left"></i> Previous</a>
+    {% else %}
+    <span class="disabled"><i class="bi bi-chevron-double-left"></i></span>
+    <span class="disabled"><i class="bi bi-chevron-left"></i> Previous</span>
+    {% endif %}
+    {% for n in page_numbers %}
+      {% if n is none %}<span>…</span>
+      {% elif n == page %}<span class="this-page">{{ n }}</span>
+      {% else %}<a href="{{ url_for('admin.dashboard') }}?{{ build_logs_query_string(filters, page=n) }}">{{ n }}</a>
+      {% endif %}
+    {% endfor %}
+    {% if page < pages %}
+    <a href="{{ url_for('admin.dashboard') }}?{{ build_logs_query_string(filters, page=page+1) }}">Next <i class="bi bi-chevron-right"></i></a>
+    <a href="{{ url_for('admin.dashboard') }}?{{ build_logs_query_string(filters, page=pages) }}" title="Last page"><i class="bi bi-chevron-double-right"></i></a>
+    {% else %}
+    <span class="disabled">Next <i class="bi bi-chevron-right"></i></span>
+    <span class="disabled"><i class="bi bi-chevron-double-right"></i></span>
+    {% endif %}
+    {% endif %}
   </div>
 </div>
 {% endblock %}

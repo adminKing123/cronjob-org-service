@@ -1,14 +1,14 @@
 {% extends "admin_base.html" %}
-{% block title %}Log in · Email Service Admin{% endblock %}
+{% block title %}Log in · Cron Service Admin{% endblock %}
 {% block body_class %}login{% endblock %}
 {% block layout %}
 <div id="container">
   <div id="content">
     <div class="login-form">
       <div id="branding-center">
-        <i class="bi bi-envelope-paper-fill"></i>
-        <h1>Admin sign in</h1>
-        <p style="color:var(--muted);margin:8px 0 0;font-size:0.9rem;">Sign in to manage send logs and settings.</p>
+        <i class="bi bi-clock-history"></i>
+        <h1>Cron Service</h1>
+        <p style="color:var(--muted);margin:8px 0 0;font-size:0.9rem;">Sign in to manage schedules, trigger logs, and proxy settings.</p>
       </div>
       {% if error %}
       <ul class="messagelist"><li class="error"><i class="bi bi-exclamation-triangle"></i> {{ error }}</li></ul>

@@ -15,6 +15,8 @@ PER_PAGE = 25
 SORT_OPTIONS = {
     "created_desc": ("Newest first", TriggerLog.created_at.desc()),
     "created_asc": ("Oldest first", TriggerLog.created_at.asc()),
+    "duration_desc": ("Duration (high → low)", TriggerLog.duration_ms.desc().nulls_last()),
+    "duration_asc": ("Duration (low → high)", TriggerLog.duration_ms.asc().nulls_last()),
 }
 
 
@@ -49,6 +51,48 @@ def _log_filters_from_request() -> dict:
         "owner_email": request.args.get("owner_email", "").strip(),
         "sort": sort,
     }
+
+
+def build_logs_query_string(filters: dict, *, page: int | None = None, sort: str | None = None) -> str:
+    params: dict[str, str | int] = {}
+    for key in ("workflow_id", "owner_email"):
+        val = (filters.get(key) or "").strip()
+        if val:
+            params[key] = val
+    status = filters.get("status", "all")
+    if status and status != "all":
+        params["status"] = status
+    sort_val = sort if sort is not None else filters.get("sort", "created_desc")
+    if sort_val and sort_val != "created_desc":
+        params["sort"] = sort_val
+    if page and page > 1:
+        params["page"] = page
+    return urlencode(params)
+
+
+def _pagination_range(page: int, pages: int) -> list[int | None]:
+    if pages <= 1:
+        return [1]
+    if pages <= 7:
+        return list(range(1, pages + 1))
+    nums: list[int | None] = [1]
+    if page > 4:
+        nums.append(None)
+    start = max(2, page - 2)
+    end = min(pages - 1, page + 2)
+    for n in range(start, end + 1):
+        if n not in nums:
+            nums.append(n)
+    if page < pages - 3:
+        nums.append(None)
+    if pages not in nums:
+        nums.append(pages)
+    return nums
+
+
+@admin_bp.app_context_processor
+def _admin_template_globals():
+    return {"build_logs_query_string": build_logs_query_string}
 
 
 def _apply_log_filters(stmt, filters: dict):
@@ -117,13 +161,18 @@ def dashboard():
     finally:
         db.close()
 
+    page_numbers = _pagination_range(page, pages)
+    qs = build_logs_query_string(filters)
+
     return render_template(
         "admin_dashboard.html",
         logs=rows,
         page=page,
         pages=pages,
+        page_numbers=page_numbers,
         total=total,
         filters=filters,
+        query_string=qs,
         status=filters["status"],
         sort=filters["sort"],
         sort_options=SORT_OPTIONS,
@@ -222,6 +271,31 @@ def _mask_secret(value: str) -> str:
     return f"{value[:visible]}{'•' * middle}{value[-visible:]}"
 
 
+def _preview(text: str, length: int) -> str:
+    compact = " ".join((text or "").split())
+    if len(compact) <= length:
+        return compact
+    return compact[: length - 1] + "…"
+
+
+def _format_duration_seconds(duration_ms: int | None) -> str | None:
+    if duration_ms is None:
+        return None
+    seconds = duration_ms / 1000
+    if seconds < 1:
+        return f"{seconds:.2f} s"
+    if seconds < 10:
+        return f"{seconds:.2f} s"
+    return f"{seconds:.1f} s"
+
+
+def _short_timestamp(display: str) -> str:
+    parts = display.split()
+    if len(parts) >= 2 and len(parts[0]) >= 10 and "-" in parts[0]:
+        return f"{parts[0][5:]} {parts[1][:5]}"
+    return display
+
+
 def _log_row(log: TriggerLog, include_detail: bool = False) -> dict:
     created = log.created_at
     if created.tzinfo is None:
@@ -229,19 +303,30 @@ def _log_row(log: TriggerLog, include_detail: bool = False) -> dict:
     else:
         created_display = created.astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
 
+    status = log.status or "failed"
+    if status not in ("success", "failed", "pending", "dispatched"):
+        status = "failed"
+
+    workflow_label = log.workflow_name or log.workflow_id or ""
+
     row = {
         "id": log.id,
         "created_at": created_display,
-        "status": log.status,
+        "created_at_short": _short_timestamp(created_display),
+        "status": status,
         "delivery_mode": getattr(log, "delivery_mode", "direct") or "direct",
         "workflow_id": log.workflow_id,
         "workflow_name": log.workflow_name,
+        "workflow_label": workflow_label,
+        "workflow_short": _preview(workflow_label, 52),
         "owner_email": log.owner_email,
+        "owner_short": _preview(log.owner_email or "—", 40),
         "attempts": log.attempts,
         "noney_status_code": log.noney_status_code,
         "error_detail": log.error_detail,
         "client_ip": log.client_ip,
         "duration_ms": log.duration_ms,
+        "duration_display": _format_duration_seconds(log.duration_ms),
     }
     if include_detail:
         row["error_detail"] = log.error_detail

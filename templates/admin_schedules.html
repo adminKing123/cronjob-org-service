@@ -1,5 +1,5 @@
 {% extends "admin_layout.html" %}
-{% block title %}Schedules · Cron Service{% endblock %}
+{% block title %}Schedules · Cron Service Admin{% endblock %}
 {% block breadcrumb_trail %}<span class="sep">›</span> Schedules{% endblock %}
 {% block page_header %}
 <h1><i class="bi bi-calendar-check"></i> Active schedules</h1>
@@ -7,30 +7,48 @@
 {% endblock %}
 {% block content %}
 <div class="changelist-module">
+  <h2 class="module-caption"><i class="bi bi-table"></i> Registered workflows</h2>
   <div class="table-scroll">
-  <table id="result_list">
+  <table id="result_list" class="schedules-table">
     <thead>
       <tr>
-        <th>Workflow</th>
-        <th>Owner</th>
-        <th>Cron</th>
-        <th>TZ</th>
-        <th>cron-job.org ID</th>
-        <th>Public URL</th>
+        <th scope="col" class="col-wf-name">Workflow</th>
+        <th scope="col" class="col-wf-id">Workflow ID</th>
+        <th scope="col" class="col-owner">Owner</th>
+        <th scope="col" class="col-cron">Cron</th>
+        <th scope="col" class="col-tz">TZ</th>
+        <th scope="col" class="col-cjo-id">Job ID</th>
+        <th scope="col" class="col-url">Public webhook</th>
       </tr>
     </thead>
     <tbody>
       {% for s in schedules %}
       <tr>
-        <td><strong>{{ s.workflow_name or '—' }}</strong><br><code>{{ s.workflow_id }}</code></td>
-        <td>{{ s.owner_email }}</td>
-        <td><code>{{ s.cron_expression }}</code></td>
-        <td>{{ s.timezone }}</td>
-        <td>{{ s.cron_org_job_id or '—' }}</td>
-        <td><span class="cell-clip"><a href="{{ s.public_webhook_url }}">{{ s.public_webhook_url }}</a></span></td>
+        <td class="col-wf-name">
+          <span class="cell-subject">{{ s.workflow_name or '—' }}</span>
+        </td>
+        <td class="col-wf-id">
+          <code class="cell-code" title="{{ s.workflow_id }}">{{ s.workflow_id }}</code>
+        </td>
+        <td class="col-owner">
+          <span class="cell-clip" title="{{ s.owner_email }}">{{ s.owner_email or '—' }}</span>
+        </td>
+        <td class="col-cron">
+          <code class="cell-code">{{ s.cron_expression }}</code>
+        </td>
+        <td class="col-tz">{{ s.timezone }}</td>
+        <td class="col-cjo-id">{{ s.cron_org_job_id or '—' }}</td>
+        <td class="col-url">
+          <a class="cell-link" href="{{ s.public_webhook_url }}" target="_blank" rel="noopener" title="{{ s.public_webhook_url }}">{{ s.public_webhook_url }}</a>
+        </td>
       </tr>
       {% else %}
-      <tr><td colspan="6">No schedules registered.</td></tr>
+      <tr>
+        <td colspan="7" class="table-empty">
+          <i class="bi bi-calendar-x" aria-hidden="true"></i>
+          No schedules registered yet.
+        </td>
+      </tr>
       {% endfor %}
     </tbody>
   </table>

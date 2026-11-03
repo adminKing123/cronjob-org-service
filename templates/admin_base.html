@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Email Service Admin{% endblock %}</title>
+  <title>{% block title %}Cron Service Admin{% endblock %}</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <style>
     :root {
@@ -258,7 +258,7 @@
       background: var(--surface);
       min-width: 0;
     }
-    .fc-status select { width: 88px; }
+    .fc-status select { width: 112px; min-width: 112px; }
     .fc-sort select { width: 148px; }
     .fc-text input { width: 112px; }
     .fc-date input { width: 128px; }
@@ -308,7 +308,14 @@
       border-collapse: collapse;
       border: none;
       background: var(--surface);
+    }
+    table#result_list.cron-logs-table {
       table-layout: fixed;
+      min-width: 920px;
+    }
+    table#result_list.schedules-table {
+      table-layout: auto;
+      min-width: 1080px;
     }
     #result_list thead th {
       padding: 0.65rem 0.85rem;
@@ -337,14 +344,21 @@
       line-height: 1.45;
     }
     #result_list tbody tr:hover td { background: var(--row-hover); }
-    #result_list .col-id { width: 52px; white-space: nowrap; }
-    #result_list .col-time { width: 118px; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--text-secondary); }
-    #result_list .col-to { max-width: 160px; }
-    #result_list .col-subject { min-width: 140px; max-width: 220px; }
-    #result_list .col-from { max-width: 180px; }
-    #result_list .col-duration { width: 72px; white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
-    #result_list .col-status { width: 44px; text-align: center; }
-    #result_list .col-action { width: 56px; white-space: nowrap; text-align: right; }
+    #result_list .col-id { width: 56px; white-space: nowrap; }
+    #result_list .col-time { width: 108px; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--text-secondary); }
+    #result_list .col-workflow { width: 22%; min-width: 140px; }
+    #result_list .col-owner { width: 18%; min-width: 120px; }
+    #result_list .col-mode { width: 72px; white-space: nowrap; }
+    #result_list .col-duration { width: 80px; white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
+    #result_list .col-status { width: 96px; white-space: nowrap; }
+    #result_list .col-action { width: 52px; white-space: nowrap; text-align: right; }
+    #result_list.schedules-table .col-wf-name { min-width: 120px; max-width: 200px; }
+    #result_list.schedules-table .col-wf-id { min-width: 140px; max-width: 220px; }
+    #result_list.schedules-table .col-owner { min-width: 140px; max-width: 200px; }
+    #result_list.schedules-table .col-cron { white-space: nowrap; }
+    #result_list.schedules-table .col-tz { width: 64px; white-space: nowrap; }
+    #result_list.schedules-table .col-cjo-id { width: 88px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    #result_list.schedules-table .col-url { min-width: 200px; max-width: 320px; }
     .cell-clip {
       display: block;
       overflow: hidden;
@@ -367,8 +381,69 @@
       vertical-align: middle;
       box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.08);
     }
-    .status-dot.sent { background: var(--success); }
+    .status-dot.sent,
+    .status-dot.success { background: var(--success); }
     .status-dot.failed { background: var(--error); }
+    .status-dot.pending { background: #d97706; }
+    .status-dot.dispatched { background: var(--primary); }
+
+    .status-pill {
+      display: inline-block;
+      max-width: 100%;
+      padding: 0.12rem 0.45rem;
+      border-radius: 999px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      vertical-align: middle;
+    }
+    .status-pill.success { background: var(--success-bg); color: var(--success); }
+    .status-pill.failed { background: var(--error-bg); color: var(--error); }
+    .status-pill.pending { background: #fffbeb; color: #b45309; border: 1px solid #fcd34d; }
+    .status-pill.dispatched { background: var(--primary-soft); color: var(--primary); border: 1px solid #bfdbfe; }
+
+    .mode-badge {
+      display: inline-block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--muted);
+    }
+    .mode-badge.proxy { color: var(--primary); }
+
+    .cell-code {
+      display: block;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      background: transparent;
+      border: none;
+      padding: 0;
+    }
+    .cell-link {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 0.82rem;
+    }
+
+    .table-empty {
+      text-align: center;
+      padding: 2rem 1rem !important;
+      color: var(--muted);
+    }
+    .table-empty .bi {
+      font-size: 1.5rem;
+      display: block;
+      margin-bottom: 8px;
+    }
 
     .status-badge {
       display: inline-flex;
@@ -380,8 +455,11 @@
       font-weight: 700;
       text-transform: uppercase;
     }
-    .status-badge.sent { background: var(--success-bg); color: var(--success); }
+    .status-badge.sent,
+    .status-badge.success { background: var(--success-bg); color: var(--success); }
     .status-badge.failed { background: var(--error-bg); color: var(--error); }
+    .status-badge.pending { background: #fffbeb; color: #b45309; }
+    .status-badge.dispatched { background: var(--primary-soft); color: var(--primary); }
 
     .paginator {
       padding: 10px 12px;
