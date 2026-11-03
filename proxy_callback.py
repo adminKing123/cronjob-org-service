@@ -6,7 +6,7 @@ import logging
 
 from sqlalchemy.orm import Session
 
-from email_notify import send_failure_email
+from email_notify import send_failure_email_async
 from models import TriggerLog
 
 logger = logging.getLogger(__name__)
@@ -39,7 +39,7 @@ def apply_proxy_callback(
     session.commit()
 
     if not success and log.owner_email:
-        send_failure_email(
+        send_failure_email_async(
             to_email=log.owner_email,
             workflow_id=log.workflow_id,
             workflow_name=log.workflow_name,

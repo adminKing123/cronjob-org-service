@@ -1,4 +1,6 @@
 import logging
+import threading
+from typing import Any
 
 import requests
 
@@ -45,3 +47,14 @@ def send_failure_email(
     except requests.RequestException as exc:
         logger.error("Email service network error: %s", exc)
     return False
+
+
+def send_failure_email_async(**kwargs: Any) -> None:
+    """Fire-and-forget failure notification — does not block webhook or callback."""
+
+    threading.Thread(
+        target=send_failure_email,
+        kwargs=kwargs,
+        name="failure-email",
+        daemon=True,
+    ).start()

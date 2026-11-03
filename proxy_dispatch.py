@@ -45,10 +45,12 @@ def dispatch_to_apps_script(
         "retry_base_seconds": config.WEBHOOK_RETRY_BASE_SECONDS,
     }
     try:
+        # Apps Script may run noney retries inside doPost — use a generous timeout
+        # in the background thread only (webhook returns before this completes).
         resp = requests.post(
             apps_script_url,
             json=payload,
-            timeout=90,
+            timeout=330,
             headers={"Content-Type": "application/json"},
         )
         if 200 <= resp.status_code < 300:

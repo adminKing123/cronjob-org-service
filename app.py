@@ -7,11 +7,11 @@ from flask import Flask, jsonify, render_template, request
 import config
 from admin_routes import admin_bp
 from database import get_session, init_db
-from email_notify import send_failure_email
+from direct_worker import run_direct_trigger_in_background
+from email_notify import send_failure_email_async
 from models import TriggerLog, WorkflowSchedule
-from noney_trigger import trigger_noney_with_retries
 from proxy_callback import apply_proxy_callback
-from proxy_dispatch import dispatch_to_apps_script
+from proxy_worker import run_proxy_dispatch_in_background
 from schedule_service import delete_schedule, upsert_schedule
 from settings_store import proxy_apps_script_url, proxy_enabled
 
@@ -181,7 +181,7 @@ def cron_org_callback(workflow_id: str):
                 session.add(log)
                 session.commit()
                 if row.owner_email:
-                    send_failure_email(
+                    send_failure_email_async(
                         to_email=row.owner_email,
                         workflow_id=row.workflow_id,
                         workflow_name=row.workflow_name,
@@ -193,10 +193,11 @@ def cron_org_callback(workflow_id: str):
 
             log.status = "pending"
             session.add(log)
-            session.flush()
+            session.commit()
+            dispatch_id = log.id
 
-            accepted, err = dispatch_to_apps_script(
-                dispatch_id=log.id,
+            run_proxy_dispatch_in_background(
+                dispatch_id=dispatch_id,
                 workflow_id=row.workflow_id,
                 workflow_name=row.workflow_name,
                 owner_email=row.owner_email,
@@ -204,51 +205,40 @@ def cron_org_callback(workflow_id: str):
                 noney_trigger_secret=row.noney_trigger_secret,
                 apps_script_url=script_url,
             )
-            log.duration_ms = int((time.perf_counter() - started) * 1000)
-            if accepted:
-                log.status = "dispatched"
-                session.commit()
-                return jsonify(
-                    {
-                        "ok": True,
-                        "workflow_id": workflow_id,
-                        "mode": "proxy",
-                        "dispatch_id": log.id,
-                    }
-                ), 200
 
-            log.status = "failed"
-            log.error_detail = err or "Apps Script dispatch failed"
-            session.commit()
-            if row.owner_email:
-                send_failure_email(
-                    to_email=row.owner_email,
-                    workflow_id=row.workflow_id,
-                    workflow_name=row.workflow_name,
-                    error_detail=log.error_detail,
-                    status_code=None,
-                    attempts=0,
-                )
-            return jsonify({"error": log.error_detail}), 502
+            return jsonify(
+                {
+                    "ok": True,
+                    "workflow_id": workflow_id,
+                    "mode": "proxy",
+                    "dispatch_id": dispatch_id,
+                    "status": "pending",
+                }
+            ), 202
 
-        ok, attempts, status_code, err = trigger_noney_with_retries(
-            noney_trigger_url=row.noney_trigger_url,
-            noney_trigger_secret=row.noney_trigger_secret,
+        log.status = "pending"
+        session.add(log)
+        session.commit()
+        dispatch_id = log.id
+
+        run_direct_trigger_in_background(
+            dispatch_id=dispatch_id,
             workflow_id=row.workflow_id,
             workflow_name=row.workflow_name,
             owner_email=row.owner_email,
+            noney_trigger_url=row.noney_trigger_url,
+            noney_trigger_secret=row.noney_trigger_secret,
         )
-        log.attempts = attempts
-        log.noney_status_code = status_code
-        log.error_detail = err
-        log.status = "success" if ok else "failed"
-        log.duration_ms = int((time.perf_counter() - started) * 1000)
-        session.add(log)
-        session.commit()
 
-        if ok:
-            return jsonify({"ok": True, "workflow_id": workflow_id, "mode": "direct"}), 200
-        return jsonify({"error": err or "Trigger failed", "attempts": attempts}), 502
+        return jsonify(
+            {
+                "ok": True,
+                "workflow_id": workflow_id,
+                "mode": "direct",
+                "dispatch_id": dispatch_id,
+                "status": "pending",
+            }
+        ), 202
     except Exception as exc:
         session.rollback()
         log.error_detail = str(exc)

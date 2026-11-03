@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 import requests
 
 import config
-from email_notify import send_failure_email
+from email_notify import send_failure_email_async
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,7 @@ def trigger_noney_with_retries(
             time.sleep(delay)
 
     if owner_email:
-        send_failure_email(
+        send_failure_email_async(
             to_email=owner_email,
             workflow_id=workflow_id,
             workflow_name=workflow_name,

@@ -27,8 +27,8 @@
       </label>
       <p class="help">
         When off, Cron Service POSTs to noney-api with retries (current behavior).
-        When on, Cron Service POSTs to your Apps Script web app; the script calls noney and
-        reports back to the callback URL.
+        When on, Cron Service accepts the cron ping immediately and POSTs to Apps Script in a
+        background thread. The script calls noney (with retries) and reports back to the callback URL.
       </p>
     </div>
     <div class="form-row">
