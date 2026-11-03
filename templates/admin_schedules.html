@@ -1,0 +1,39 @@
+{% extends "admin_layout.html" %}
+{% block title %}Schedules · Cron Service{% endblock %}
+{% block breadcrumb_trail %}<span class="sep">›</span> Schedules{% endblock %}
+{% block page_header %}
+<h1><i class="bi bi-calendar-check"></i> Active schedules</h1>
+<p class="subtitle">{{ schedules|length }} registered workflow(s)</p>
+{% endblock %}
+{% block content %}
+<div class="changelist-module">
+  <div class="table-scroll">
+  <table id="result_list">
+    <thead>
+      <tr>
+        <th>Workflow</th>
+        <th>Owner</th>
+        <th>Cron</th>
+        <th>TZ</th>
+        <th>cron-job.org ID</th>
+        <th>Public URL</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in schedules %}
+      <tr>
+        <td><strong>{{ s.workflow_name or '—' }}</strong><br><code>{{ s.workflow_id }}</code></td>
+        <td>{{ s.owner_email }}</td>
+        <td><code>{{ s.cron_expression }}</code></td>
+        <td>{{ s.timezone }}</td>
+        <td>{{ s.cron_org_job_id or '—' }}</td>
+        <td><span class="cell-clip"><a href="{{ s.public_webhook_url }}">{{ s.public_webhook_url }}</a></span></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6">No schedules registered.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

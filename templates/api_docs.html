@@ -1,0 +1,44 @@
+{% extends "docs_public_layout.html" %}
+{% block doc_content %}
+<h1><i class="bi bi-book"></i> Cron Service API</h1>
+<p class="subtitle">Register Fuse workflow schedules with cron-job.org. Incoming pings hit <code>GET /webhook/&lt;workflow_id&gt;</code>, then this service POSTs to noney-api.</p>
+
+<div class="doc-callout">
+  <strong>Auth:</strong> <code>Authorization: Bearer &lt;SERVICE_API_KEY&gt;</code> on management routes.<br>
+  <strong>Public callback:</strong> cron-job.org calls <code>GET {PUBLIC_HOST}/webhook/{workflow_id}</code> (no auth).
+</div>
+
+<h2>Upsert schedule</h2>
+<p><code>POST /api/schedules/upsert</code></p>
+<table class="doc-table">
+  <thead><tr><th>Field</th><th>Required</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>workflow_id</code></td><td>Yes</td><td>Fuse workflow ID</td></tr>
+    <tr><td><code>workflow_name</code></td><td>No</td><td>Display name</td></tr>
+    <tr><td><code>owner_id</code></td><td>No</td><td>Firebase UID</td></tr>
+    <tr><td><code>owner_email</code></td><td>No</td><td>Failure notification recipient</td></tr>
+    <tr><td><code>schedule_config</code></td><td>Yes</td><td>Schedule starter node config (incl. <code>schedule_mode</code>, timezone, etc.)</td></tr>
+    <tr><td><code>cron_expression</code></td><td>No</td><td>Ignored — computed from <code>schedule_config</code> for logs/admin</td></tr>
+    <tr><td><code>timezone</code></td><td>No</td><td>IANA timezone (defaults from schedule_config)</td></tr>
+    <tr><td><code>noney_trigger_url</code></td><td>Yes</td><td>noney-api POST URL to run the workflow</td></tr>
+    <tr><td><code>noney_trigger_secret</code></td><td>Yes</td><td>Bearer token for that URL</td></tr>
+  </tbody>
+</table>
+
+<h2>Delete schedule</h2>
+<p><code>DELETE /api/schedules/&lt;workflow_id&gt;</code></p>
+
+<h2>Example — upsert</h2>
+<pre class="doc-pre">curl -X POST "$PUBLIC_HOST/api/schedules/upsert" \
+  -H "Authorization: Bearer $SERVICE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "workflow_id": "abc123",
+    "workflow_name": "Daily report",
+    "owner_email": "user@example.com",
+    "schedule_config": { "schedule_mode": "daily", "hour": "9", "minute": "0", "timezone": "UTC" },
+    "cron_expression": "0 9 * * *",
+    "noney_trigger_url": "https://noney.example/fuse/schedule/webhook/abc123",
+    "noney_trigger_secret": "secret-from-noney"
+  }'</pre>
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends "admin_base.html" %}
+{% block layout %}
+{% set ep = request.endpoint or '' %}
+<div id="container">
+  <header id="header">
+    <div class="header-main">
+      <div id="branding">
+        <a href="{{ url_for('admin.dashboard') }}">
+          <i class="bi bi-clock-history" aria-hidden="true"></i>
+          Cron Service
+        </a>
+      </div>
+      <nav id="nav-global" aria-label="Main navigation">
+        <a href="{{ url_for('admin.dashboard') }}" class="{% if ep in ('admin.dashboard', 'admin.log_detail') %}active{% endif %}">
+          <i class="bi bi-journal-text"></i> Trigger logs
+        </a>
+        <a href="{{ url_for('admin.schedules_list') }}" class="{% if ep == 'admin.schedules_list' %}active{% endif %}">
+          <i class="bi bi-calendar-check"></i> Schedules
+        </a>
+        <a href="{{ url_for('admin.test_page') }}" class="{% if ep == 'admin.test_page' %}active{% endif %}">
+          <i class="bi bi-plug"></i> API key
+        </a>
+        <a href="{{ url_for('public_api_docs') }}">
+          <i class="bi bi-book"></i> API docs
+        </a>
+      </nav>
+    </div>
+    <div id="user-tools">
+      <form method="post" action="{{ url_for('admin.logout') }}">
+        <button type="submit" class="link-btn"><i class="bi bi-box-arrow-right"></i> Log out</button>
+      </form>
+    </div>
+  </header>
+  {% block breadcrumbs %}
+  <div class="breadcrumbs">
+    <a href="{{ url_for('admin.dashboard') }}"><i class="bi bi-house-door"></i> Home</a>
+    {% block breadcrumb_trail %}{% endblock %}
+  </div>
+  {% endblock %}
+  <div id="content" class="clearfix">
+    {% block page_header %}{% endblock %}
+    {% block content %}{% endblock %}
+  </div>
+</div>
+{% endblock %}

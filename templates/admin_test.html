@@ -1,0 +1,33 @@
+{% extends "admin_layout.html" %}
+{% block title %}API key · Cron Service Admin{% endblock %}
+{% block breadcrumb_trail %}
+<span class="sep">›</span> API key
+{% endblock %}
+{% block page_header %}
+<h1><i class="bi bi-shield-lock"></i> Service API key</h1>
+<p class="subtitle">noney-api sends this key as <code>Authorization: Bearer …</code> on <code>{{ api_url }}</code>.</p>
+{% endblock %}
+{% block content %}
+<div class="module">
+  <div class="module-inner">
+    <div class="key-row">
+      <code class="key-display" id="key-masked">{{ api_key_masked }}</code>
+      <button type="button" class="button-secondary" id="copy-key-btn"><i class="bi bi-clipboard"></i> Copy key</button>
+      <span style="color:var(--muted);" id="copy-key-status" aria-live="polite"></span>
+    </div>
+    <p class="help" style="margin-top:1rem;">Full key (admin only):</p>
+    <code class="key-display">{{ api_key }}</code>
+  </div>
+</div>
+<script>
+document.getElementById("copy-key-btn")?.addEventListener("click", async () => {
+  const key = {{ api_key|tojson }};
+  try {
+    await navigator.clipboard.writeText(key);
+    document.getElementById("copy-key-status").textContent = "Copied.";
+  } catch {
+    document.getElementById("copy-key-status").textContent = "Copy failed.";
+  }
+});
+</script>
+{% endblock %}

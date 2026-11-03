@@ -1,0 +1,30 @@
+{% extends "admin_layout.html" %}
+{% block title %}Log #{{ log.id }} · Cron Service{% endblock %}
+{% block breadcrumb_trail %}
+<span class="sep">›</span> <a href="{{ url_for('admin.dashboard') }}">Trigger logs</a>
+<span class="sep">›</span> #{{ log.id }}
+{% endblock %}
+{% block page_header %}
+<h1>Trigger log #{{ log.id }}</h1>
+{% endblock %}
+{% block content %}
+<div class="module">
+  <h2>Details</h2>
+  <div class="module-inner">
+    <dl class="detail-grid">
+      <dt>Status</dt><dd>{{ log.status }}</dd>
+      <dt>Time</dt><dd>{{ log.created_at }}</dd>
+      <dt>Workflow</dt><dd><code>{{ log.workflow_id }}</code> — {{ log.workflow_name }}</dd>
+      <dt>Owner email</dt><dd>{{ log.owner_email or '—' }}</dd>
+      <dt>Attempts</dt><dd>{{ log.attempts }}</dd>
+      <dt>noney HTTP</dt><dd>{{ log.noney_status_code if log.noney_status_code is not none else '—' }}</dd>
+      <dt>Duration</dt><dd>{% if log.duration_ms %}{{ log.duration_ms }} ms{% else %}—{% endif %}</dd>
+      <dt>Client IP</dt><dd>{{ log.client_ip or '—' }}</dd>
+    </dl>
+    {% if log.error_detail %}
+    <h3 style="margin-top:1rem;font-size:0.95rem;">Error</h3>
+    <pre class="body-block">{{ log.error_detail }}</pre>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

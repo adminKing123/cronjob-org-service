@@ -1,0 +1,31 @@
+{% extends "admin_base.html" %}
+{% block title %}API documentation · Email Service{% endblock %}
+{% block layout %}
+<div id="container">
+  <header id="header" class="docs-open-header">
+    <div class="header-main">
+      <div id="branding">
+        <a href="{{ url_for('public_api_docs') }}">
+          <i class="bi bi-envelope-paper" aria-hidden="true"></i>
+          Email Service
+        </a>
+      </div>
+      <nav id="nav-global" aria-label="Documentation">
+        <a href="{{ url_for('public_api_docs') }}" class="active docs-open-link">
+          <i class="bi bi-book"></i> API docs
+        </a>
+        <a href="{{ url_for('admin.login') }}">
+          <i class="bi bi-shield-lock"></i> Admin
+        </a>
+      </nav>
+    </div>
+  </header>
+  <div class="breadcrumbs">
+    <a href="{{ url_for('public_api_docs') }}"><i class="bi bi-house-door"></i> Home</a>
+    <span class="sep">›</span> API documentation
+  </div>
+  <div id="content" class="doc-page">
+    {% block doc_content %}{% endblock %}
+  </div>
+</div>
+{% endblock %}

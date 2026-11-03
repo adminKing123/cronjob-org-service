@@ -1,0 +1,33 @@
+{% extends "admin_base.html" %}
+{% block title %}Log in · Email Service Admin{% endblock %}
+{% block body_class %}login{% endblock %}
+{% block layout %}
+<div id="container">
+  <div id="content">
+    <div class="login-form">
+      <div id="branding-center">
+        <i class="bi bi-envelope-paper-fill"></i>
+        <h1>Admin sign in</h1>
+        <p style="color:var(--muted);margin:8px 0 0;font-size:0.9rem;">Sign in to manage send logs and settings.</p>
+      </div>
+      {% if error %}
+      <ul class="messagelist"><li class="error"><i class="bi bi-exclamation-triangle"></i> {{ error }}</li></ul>
+      {% endif %}
+      <p style="text-align:center;margin:0 0 1rem;font-size:0.88rem;">
+        <a href="{{ url_for('public_api_docs') }}"><i class="bi bi-book"></i> API documentation</a>
+      </p>
+      <form method="post">
+        <div class="form-row">
+          <label for="password"><i class="bi bi-key"></i> Password</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required autofocus>
+        </div>
+        <div class="form-row" style="margin-top:16px;">
+          <button type="submit" class="default" style="width:100%;justify-content:center;">
+            <i class="bi bi-box-arrow-in-right"></i> Log in
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends "admin_layout.html" %}
+{% block title %}Trigger logs · Cron Service Admin{% endblock %}
+{% block breadcrumb_trail %}
+<span class="sep">›</span> Trigger logs
+{% endblock %}
+{% block page_header %}
+<h1><i class="bi bi-journal-text"></i> Trigger logs</h1>
+<p class="subtitle">{{ total }} matching · {{ success_total }} success · {{ failed_total }} failed · {{ active_schedules }} active schedules</p>
+{% endblock %}
+{% block content %}
+
+<div class="stat-row">
+  <div class="stat-box">
+    <div class="label">Filtered</div>
+    <div class="value">{{ total }}</div>
+  </div>
+  <div class="stat-box">
+    <div class="label">Success (all)</div>
+    <div class="value text-success">{{ success_total }}</div>
+  </div>
+  <div class="stat-box">
+    <div class="label">Failed (all)</div>
+    <div class="value text-error">{{ failed_total }}</div>
+  </div>
+</div>
+
+<div class="changelist-module">
+  <h2 class="module-caption">cron-job.org → noney-api forwards</h2>
+  <div id="toolbar">
+    <form method="get" class="search-form" action="{{ url_for('admin.dashboard') }}">
+      <div class="fc-item fc-status">
+        <label for="filter-status">Status</label>
+        <select id="filter-status" name="status">
+          <option value="all"{% if filters.status == 'all' %} selected{% endif %}>All</option>
+          <option value="success"{% if filters.status == 'success' %} selected{% endif %}>Success</option>
+          <option value="failed"{% if filters.status == 'failed' %} selected{% endif %}>Failed</option>
+        </select>
+      </div>
+      <div class="fc-item fc-text">
+        <label for="filter-wf">Workflow ID</label>
+        <input id="filter-wf" type="text" name="workflow_id" value="{{ filters.workflow_id }}" placeholder="contains…">
+      </div>
+      <div class="fc-item fc-text">
+        <label for="filter-email">Owner email</label>
+        <input id="filter-email" type="text" name="owner_email" value="{{ filters.owner_email }}" placeholder="contains…">
+      </div>
+      <div class="fc-actions">
+        <button type="submit" class="search-btn">Apply</button>
+        <a class="reset-link" href="{{ url_for('admin.dashboard') }}">Clear</a>
+      </div>
+    </form>
+  </div>
+  <div class="table-scroll">
+  <table id="result_list">
+    <thead>
+      <tr>
+        <th class="col-id">ID</th>
+        <th class="col-time">Time</th>
+        <th>Workflow</th>
+        <th>Owner</th>
+        <th class="col-duration">Duration</th>
+        <th class="col-status">Status</th>
+        <th class="col-action"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for log in logs %}
+      <tr>
+        <td class="col-id">{{ log.id }}</td>
+        <td class="col-time">{{ log.created_at }}</td>
+        <td><span class="cell-clip" title="{{ log.workflow_id }}">{{ log.workflow_name or log.workflow_id }}</span></td>
+        <td><span class="cell-clip">{{ log.owner_email }}</span></td>
+        <td class="col-duration">{% if log.duration_ms %}{{ log.duration_ms }} ms{% else %}—{% endif %}</td>
+        <td class="col-status">
+          <span class="status-badge {% if log.status == 'success' %}sent{% else %}failed{% endif %}">{{ log.status }}</span>
+        </td>
+        <td class="col-action"><a href="{{ url_for('admin.log_detail', log_id=log.id) }}">View</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7">No logs yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}
