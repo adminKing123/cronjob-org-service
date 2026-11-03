@@ -1,0 +1,59 @@
+{% extends "admin_layout.html" %}
+{% block title %}Settings · Cron Service{% endblock %}
+{% block breadcrumb_trail %}<span class="sep">›</span> Settings{% endblock %}
+{% block page_header %}
+<h1><i class="bi bi-gear"></i> Settings</h1>
+<p class="subtitle">Proxy mode routes schedule fires through Google Apps Script instead of calling noney-api directly.</p>
+{% endblock %}
+{% block content %}
+
+{% if saved %}
+<ul class="messagelist"><li class="success">Settings saved.</li></ul>
+{% endif %}
+{% if errors %}
+<ul class="messagelist">
+  {% for e in errors %}<li class="error">{{ e }}</li>{% endfor %}
+</ul>
+{% endif %}
+
+<form method="post" class="module">
+  <h2>Webhook proxy</h2>
+  <div class="module-inner">
+    <div class="form-row">
+      <label>
+        <input type="checkbox" name="proxy_enabled" value="on"
+          {% if values.proxy_enabled == 'true' %}checked{% endif %}>
+        Enable Apps Script proxy
+      </label>
+      <p class="help">
+        When off, Cron Service POSTs to noney-api with retries (current behavior).
+        When on, Cron Service POSTs to your Apps Script web app; the script calls noney and
+        reports back to the callback URL.
+      </p>
+    </div>
+    <div class="form-row">
+      <label for="proxy_apps_script_url">Apps Script web app URL</label>
+      <input
+        type="url"
+        id="proxy_apps_script_url"
+        name="proxy_apps_script_url"
+        value="{{ values.proxy_apps_script_url }}"
+        placeholder="https://script.google.com/macros/s/…/exec"
+      >
+      <p class="help">Deploy <code>FuseCronProxy.gs</code> as a web app (Execute as: Me, Access: Anyone).</p>
+    </div>
+    {% if callback_url %}
+    <div class="form-row">
+      <label>Callback URL (for Apps Script)</label>
+      <code class="key-display">{{ callback_url }}</code>
+      <p class="help">Apps Script POSTs here with <code>Authorization: Bearer &lt;SERVICE_API_KEY&gt;</code> (same as noney-api).</p>
+    </div>
+    {% endif %}
+    <p class="help" style="margin-top:1rem;">
+      Copy <code>SERVICE_API_KEY</code> from <a href="{{ url_for('admin.test_page') }}">API key</a> into the Apps Script
+      <code>CALLBACK_SECRET</code> constant (or leave blank to use the payload <code>callback_secret</code>).
+    </p>
+    <button type="submit" class="button default" style="margin-top:1rem;">Save settings</button>
+  </div>
+</form>
+{% endblock %}

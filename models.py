@@ -50,6 +50,18 @@ class WorkflowSchedule(Base):
             return {}
 
 
+class AppSetting(Base):
+    __tablename__ = "app_settings"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+
 class TriggerLog(Base):
     __tablename__ = "trigger_logs"
 
@@ -60,6 +72,7 @@ class TriggerLog(Base):
         nullable=False,
     )
     status: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
+    delivery_mode: Mapped[str] = mapped_column(String(16), nullable=False, default="direct")
 
     workflow_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     workflow_name: Mapped[str] = mapped_column(String(256), nullable=False, default="")

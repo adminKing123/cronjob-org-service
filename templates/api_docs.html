@@ -28,6 +28,18 @@
 <h2>Delete schedule</h2>
 <p><code>DELETE /api/schedules/&lt;workflow_id&gt;</code></p>
 
+<h2>Proxy callback (Apps Script)</h2>
+<p>When proxy mode is enabled in Admin → Settings, Apps Script reports the noney result here:</p>
+<p><code>POST /api/proxy/callback</code> · same Bearer auth as other API routes.</p>
+<pre class="doc-pre">{
+  "dispatch_id": 123,
+  "success": true,
+  "attempts": 1,
+  "status_code": 202,
+  "error": null
+}</pre>
+<p>On <code>success: false</code>, Cron Service emails the workflow owner (same as direct mode).</p>
+
 <h2>Example — upsert</h2>
 <pre class="doc-pre">curl -X POST "$PUBLIC_HOST/api/schedules/upsert" \
   -H "Authorization: Bearer $SERVICE_API_KEY" \

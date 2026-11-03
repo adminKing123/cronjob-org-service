@@ -41,7 +41,7 @@ def _log_filters_from_request() -> dict:
     if sort not in SORT_OPTIONS:
         sort = "created_desc"
     status = request.args.get("status", "all").lower()
-    if status not in ("all", "success", "failed"):
+    if status not in ("all", "success", "failed", "pending", "dispatched"):
         status = "all"
     return {
         "status": status,
@@ -174,6 +174,33 @@ def schedules_list():
     return render_template("admin_schedules.html", schedules=items)
 
 
+@admin_bp.route("/settings", methods=["GET", "POST"])
+@require_admin
+def settings_page():
+    import settings_store
+
+    errors: list[str] = []
+    saved = False
+    if request.method == "POST":
+        errors = settings_store.save_admin_form(request.form)
+        saved = not errors
+    values = settings_store.admin_form_values()
+    callback_url = None
+    try:
+        from proxy_dispatch import build_callback_url
+
+        callback_url = build_callback_url()
+    except Exception:
+        pass
+    return render_template(
+        "admin_settings.html",
+        values=values,
+        errors=errors,
+        saved=saved,
+        callback_url=callback_url,
+    )
+
+
 @admin_bp.get("/test")
 @require_admin
 def test_page():
@@ -206,6 +233,7 @@ def _log_row(log: TriggerLog, include_detail: bool = False) -> dict:
         "id": log.id,
         "created_at": created_display,
         "status": log.status,
+        "delivery_mode": getattr(log, "delivery_mode", "direct") or "direct",
         "workflow_id": log.workflow_id,
         "workflow_name": log.workflow_name,
         "owner_email": log.owner_email,

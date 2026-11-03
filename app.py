@@ -7,9 +7,13 @@ from flask import Flask, jsonify, render_template, request
 import config
 from admin_routes import admin_bp
 from database import get_session, init_db
+from email_notify import send_failure_email
 from models import TriggerLog, WorkflowSchedule
 from noney_trigger import trigger_noney_with_retries
+from proxy_callback import apply_proxy_callback
+from proxy_dispatch import dispatch_to_apps_script
 from schedule_service import delete_schedule, upsert_schedule
+from settings_store import proxy_apps_script_url, proxy_enabled
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = config.FLASK_SECRET_KEY
@@ -102,13 +106,55 @@ def api_delete_schedule(workflow_id: str):
         session.close()
 
 
+@app.post("/api/proxy/callback")
+@require_api_key
+def api_proxy_callback():
+    """
+    Apps Script reports noney webhook result after retries.
+    Body: dispatch_id, success, attempts?, status_code?, error?
+    """
+    data = request.get_json(silent=True) or {}
+    try:
+        dispatch_id = int(data.get("dispatch_id"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "dispatch_id required"}), 400
+
+    success = bool(data.get("success"))
+    attempts = int(data.get("attempts") or 0)
+    status_code = data.get("status_code")
+    if status_code is not None:
+        try:
+            status_code = int(status_code)
+        except (TypeError, ValueError):
+            status_code = None
+    error_detail = (data.get("error") or data.get("error_detail") or "").strip() or None
+
+    session = get_session()
+    try:
+        found, err = apply_proxy_callback(
+            session,
+            dispatch_id=dispatch_id,
+            success=success,
+            attempts=attempts,
+            status_code=status_code,
+            error_detail=error_detail,
+        )
+        if not found:
+            return jsonify({"error": err}), 404
+        return jsonify({"ok": True, "dispatch_id": dispatch_id, "status": "success" if success else "failed"})
+    finally:
+        session.close()
+
+
 @app.get("/webhook/<workflow_id>")
 def cron_org_callback(workflow_id: str):
-    """Called by cron-job.org (GET). Forwards to noney-api with retries."""
+    """Called by cron-job.org (GET). Direct noney POST or Apps Script proxy."""
     session = get_session()
     started = time.perf_counter()
+    use_proxy = proxy_enabled()
     log = TriggerLog(
         status="failed",
+        delivery_mode="proxy" if use_proxy else "direct",
         workflow_id=workflow_id,
         workflow_name="",
         owner_email="",
@@ -126,6 +172,65 @@ def cron_org_callback(workflow_id: str):
         log.workflow_name = row.workflow_name
         log.owner_email = row.owner_email
 
+        if use_proxy:
+            script_url = proxy_apps_script_url()
+            if not script_url:
+                log.error_detail = "Proxy enabled but Apps Script URL is not configured"
+                log.status = "failed"
+                log.duration_ms = int((time.perf_counter() - started) * 1000)
+                session.add(log)
+                session.commit()
+                if row.owner_email:
+                    send_failure_email(
+                        to_email=row.owner_email,
+                        workflow_id=row.workflow_id,
+                        workflow_name=row.workflow_name,
+                        error_detail=log.error_detail,
+                        status_code=None,
+                        attempts=0,
+                    )
+                return jsonify({"error": log.error_detail}), 503
+
+            log.status = "pending"
+            session.add(log)
+            session.flush()
+
+            accepted, err = dispatch_to_apps_script(
+                dispatch_id=log.id,
+                workflow_id=row.workflow_id,
+                workflow_name=row.workflow_name,
+                owner_email=row.owner_email,
+                noney_trigger_url=row.noney_trigger_url,
+                noney_trigger_secret=row.noney_trigger_secret,
+                apps_script_url=script_url,
+            )
+            log.duration_ms = int((time.perf_counter() - started) * 1000)
+            if accepted:
+                log.status = "dispatched"
+                session.commit()
+                return jsonify(
+                    {
+                        "ok": True,
+                        "workflow_id": workflow_id,
+                        "mode": "proxy",
+                        "dispatch_id": log.id,
+                    }
+                ), 200
+
+            log.status = "failed"
+            log.error_detail = err or "Apps Script dispatch failed"
+            session.commit()
+            if row.owner_email:
+                send_failure_email(
+                    to_email=row.owner_email,
+                    workflow_id=row.workflow_id,
+                    workflow_name=row.workflow_name,
+                    error_detail=log.error_detail,
+                    status_code=None,
+                    attempts=0,
+                )
+            return jsonify({"error": log.error_detail}), 502
+
         ok, attempts, status_code, err = trigger_noney_with_retries(
             noney_trigger_url=row.noney_trigger_url,
             noney_trigger_secret=row.noney_trigger_secret,
@@ -142,7 +247,7 @@ def cron_org_callback(workflow_id: str):
         session.commit()
 
         if ok:
-            return jsonify({"ok": True, "workflow_id": workflow_id}), 200
+            return jsonify({"ok": True, "workflow_id": workflow_id, "mode": "direct"}), 200
         return jsonify({"error": err or "Trigger failed", "attempts": attempts}), 502
     except Exception as exc:
         session.rollback()

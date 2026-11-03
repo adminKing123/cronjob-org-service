@@ -17,6 +17,9 @@
         <a href="{{ url_for('admin.schedules_list') }}" class="{% if ep == 'admin.schedules_list' %}active{% endif %}">
           <i class="bi bi-calendar-check"></i> Schedules
         </a>
+        <a href="{{ url_for('admin.settings_page') }}" class="{% if ep == 'admin.settings_page' %}active{% endif %}">
+          <i class="bi bi-gear"></i> Settings
+        </a>
         <a href="{{ url_for('admin.test_page') }}" class="{% if ep == 'admin.test_page' %}active{% endif %}">
           <i class="bi bi-plug"></i> API key
         </a>

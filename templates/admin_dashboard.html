@@ -34,6 +34,8 @@
           <option value="all"{% if filters.status == 'all' %} selected{% endif %}>All</option>
           <option value="success"{% if filters.status == 'success' %} selected{% endif %}>Success</option>
           <option value="failed"{% if filters.status == 'failed' %} selected{% endif %}>Failed</option>
+          <option value="pending"{% if filters.status == 'pending' %} selected{% endif %}>Pending</option>
+          <option value="dispatched"{% if filters.status == 'dispatched' %} selected{% endif %}>Dispatched (proxy)</option>
         </select>
       </div>
       <div class="fc-item fc-text">

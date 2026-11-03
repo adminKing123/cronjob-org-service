@@ -13,6 +13,7 @@
   <div class="module-inner">
     <dl class="detail-grid">
       <dt>Status</dt><dd>{{ log.status }}</dd>
+      <dt>Delivery</dt><dd>{{ log.delivery_mode }}</dd>
       <dt>Time</dt><dd>{{ log.created_at }}</dd>
       <dt>Workflow</dt><dd><code>{{ log.workflow_id }}</code> — {{ log.workflow_name }}</dd>
       <dt>Owner email</dt><dd>{{ log.owner_email or '—' }}</dd>
