@@ -17,9 +17,8 @@
     <tr><td><code>workflow_name</code></td><td>No</td><td>Display name</td></tr>
     <tr><td><code>owner_id</code></td><td>No</td><td>Firebase UID</td></tr>
     <tr><td><code>owner_email</code></td><td>No</td><td>Failure notification recipient</td></tr>
-    <tr><td><code>schedule_config</code></td><td>Yes</td><td>Schedule starter node config (incl. <code>schedule_mode</code>, timezone, etc.)</td></tr>
-    <tr><td><code>cron_expression</code></td><td>No</td><td>Ignored — computed from <code>schedule_config</code> for logs/admin</td></tr>
-    <tr><td><code>timezone</code></td><td>No</td><td>IANA timezone (defaults from schedule_config)</td></tr>
+    <tr><td><code>schedule_config</code></td><td>Yes</td><td>Schedule starter node config (<code>schedule_mode</code>, <code>timezone</code>, <code>schedule_expires_*</code>, etc.)</td></tr>
+    <tr><td><code>timezone</code></td><td>No</td><td>IANA timezone (defaults from <code>schedule_config.timezone</code>)</td></tr>
     <tr><td><code>noney_trigger_url</code></td><td>Yes</td><td>noney-api POST URL to run the workflow</td></tr>
     <tr><td><code>noney_trigger_secret</code></td><td>Yes</td><td>Bearer token for that URL</td></tr>
   </tbody>
@@ -49,7 +48,7 @@
     "workflow_name": "Daily report",
     "owner_email": "user@example.com",
     "schedule_config": { "schedule_mode": "daily", "hour": "9", "minute": "0", "timezone": "UTC" },
-    "cron_expression": "0 9 * * *",
+    "timezone": "UTC",
     "noney_trigger_url": "https://noney.example/fuse/schedule/webhook/abc123",
     "noney_trigger_secret": "secret-from-noney"
   }'</pre>
