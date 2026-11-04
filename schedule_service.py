@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 import config
 import cron_org_client
 from cronjob_schedule import build_cron_expression, build_cronjob_schedule, resolve_expires_at
+from schedule_timezones import is_allowed_schedule_timezone
 from models import WorkflowSchedule
 
 logger = logging.getLogger(__name__)
@@ -26,7 +27,9 @@ def upsert_schedule(session: Session, payload: dict) -> WorkflowSchedule:
         raise ValueError("workflow_id is required")
 
     schedule_config = payload.get("schedule_config") or {}
-    timezone_name = str(payload.get("timezone") or schedule_config.get("timezone") or "UTC")
+    timezone_name = str(payload.get("timezone") or schedule_config.get("timezone") or "UTC").strip() or "UTC"
+    if not is_allowed_schedule_timezone(timezone_name):
+        raise ValueError(f"Unsupported schedule timezone: {timezone_name}")
     cron_expression = build_cron_expression(schedule_config)
 
     row = session.get(WorkflowSchedule, workflow_id)
