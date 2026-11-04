@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 import config
 import cron_org_client
-from cronjob_schedule import build_cron_expression, build_cronjob_schedule
+from cronjob_schedule import build_cron_expression, build_cronjob_schedule, resolve_expires_at
 from models import WorkflowSchedule
 
 logger = logging.getLogger(__name__)
@@ -44,13 +44,14 @@ def upsert_schedule(session: Session, payload: dict) -> WorkflowSchedule:
     row.noney_trigger_url = str(payload["noney_trigger_url"]).strip()
     row.noney_trigger_secret = str(payload["noney_trigger_secret"]).strip()
     row.public_webhook_url = public_webhook_url(workflow_id)
-    row.expires_at = 0
+    expires_at = resolve_expires_at(schedule_config, timezone=timezone_name)
+    row.expires_at = expires_at
     row.updated_at = datetime.now(timezone.utc)
 
     cj_schedule = build_cronjob_schedule(
         schedule_config,
         timezone=timezone_name,
-        expires_at=0,
+        expires_at=expires_at,
     )
     title = f"Fuse {row.workflow_name or workflow_id}"[:128]
 

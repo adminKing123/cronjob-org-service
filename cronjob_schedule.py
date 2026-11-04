@@ -7,7 +7,9 @@ wdays: 0=Sunday … 6=Saturday (UNIX).
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 
 def _every() -> list[int]:
@@ -30,14 +32,54 @@ def _fuse_dow_to_cronjob(d: int) -> int:
     return (int(d) + 1) % 7
 
 
-def build_cronjob_schedule(schedule_config: dict, *, timezone: str, expires_at: int = 0) -> dict:
+def _truthy(value: object) -> bool:
+    if value is True or value == 1:
+        return True
+    if isinstance(value, str):
+        return value.strip().lower() in ("1", "true", "yes", "on")
+    return False
+
+
+def resolve_expires_at(schedule_config: dict, *, timezone: str) -> int:
+    """
+    cron-job.org expiresAt: YYYYMMDDhhmmss in the job's timezone, or 0 = never.
+    """
+    cfg = schedule_config or {}
+    if not _truthy(cfg.get("schedule_expires_enabled")):
+        return 0
+
+    tz_name = (timezone or cfg.get("timezone") or "UTC").strip() or "UTC"
+    try:
+        tz = ZoneInfo(tz_name)
+    except Exception:
+        tz = ZoneInfo("UTC")
+
+    try:
+        year = int(cfg.get("schedule_expires_year"))
+        month = int(cfg.get("schedule_expires_month"))
+        day = int(cfg.get("schedule_expires_day"))
+        hour = int(cfg.get("schedule_expires_hour") or 0)
+        minute = int(cfg.get("schedule_expires_minute") or 0)
+        dt = datetime(year, month, day, hour, minute, tzinfo=tz)
+    except (TypeError, ValueError):
+        return 0
+
+    return int(dt.strftime("%Y%m%d%H%M%S"))
+
+
+def build_cronjob_schedule(schedule_config: dict, *, timezone: str, expires_at: int | None = None) -> dict:
     cfg = schedule_config or {}
     mode = (cfg.get("schedule_mode") or "interval").lower()
     tz = (timezone or cfg.get("timezone") or "UTC").strip() or "UTC"
 
+    if expires_at is None:
+        expires_at = resolve_expires_at(cfg, timezone=tz)
+    else:
+        expires_at = int(expires_at or 0)
+
     schedule: dict[str, Any] = {
         "timezone": tz,
-        "expiresAt": int(expires_at or 0),
+        "expiresAt": expires_at,
         "minutes": _every(),
         "hours": _every(),
         "mdays": _every(),
@@ -140,20 +182,13 @@ def build_cron_expression(schedule_config: dict) -> str:
         )
     if mode == "custom":
         custom = cfg.get("custom") if isinstance(cfg.get("custom"), dict) else {}
-        minute_field = (custom.get("minute") or "").strip() or _cron_part_from_list(
-            custom.get("minutes"), 60
+        return " ".join(
+            [
+                _cron_part_from_list(custom.get("minutes"), 60),
+                _cron_part_from_list(custom.get("hours"), 24),
+                _cron_part_from_list(custom.get("days_of_month"), 31),
+                _cron_part_from_list(custom.get("months"), 12),
+                _cron_part_from_list(custom.get("days_of_week"), 7),
+            ]
         )
-        hour_field = (custom.get("hour") or "").strip() or _cron_part_from_list(
-            custom.get("hours"), 24
-        )
-        day_field = (custom.get("day") or "").strip() or _cron_part_from_list(
-            custom.get("days_of_month"), 31
-        )
-        month_field = (custom.get("month") or "").strip() or _cron_part_from_list(
-            custom.get("months"), 12
-        )
-        dow_field = (custom.get("day_of_week") or "").strip() or _cron_part_from_list(
-            custom.get("days_of_week"), 7
-        )
-        return f"{minute_field} {hour_field} {day_field} {month_field} {dow_field}"
     return "0 0 * * *"

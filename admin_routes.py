@@ -214,6 +214,7 @@ def schedules_list():
                 "timezone": r.timezone,
                 "cron_org_job_id": r.cron_org_job_id,
                 "public_webhook_url": r.public_webhook_url,
+                "expires_at": r.expires_at,
                 "enabled": r.enabled,
             }
             for r in rows

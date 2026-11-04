@@ -17,6 +17,7 @@
         <th scope="col" class="col-owner">Owner</th>
         <th scope="col" class="col-cron">Cron</th>
         <th scope="col" class="col-tz">TZ</th>
+        <th scope="col" class="col-expires">Expires</th>
         <th scope="col" class="col-cjo-id">Job ID</th>
         <th scope="col" class="col-url">Public webhook</th>
       </tr>
@@ -37,6 +38,7 @@
           <code class="cell-code">{{ s.cron_expression }}</code>
         </td>
         <td class="col-tz">{{ s.timezone }}</td>
+        <td class="col-expires">{% if s.expires_at %}{{ s.expires_at }}{% else %}Never{% endif %}</td>
         <td class="col-cjo-id">{{ s.cron_org_job_id or '—' }}</td>
         <td class="col-url">
           <a class="cell-link" href="{{ s.public_webhook_url }}" target="_blank" rel="noopener" title="{{ s.public_webhook_url }}">{{ s.public_webhook_url }}</a>
@@ -44,7 +46,7 @@
       </tr>
       {% else %}
       <tr>
-        <td colspan="7" class="table-empty">
+        <td colspan="8" class="table-empty">
           <i class="bi bi-calendar-x" aria-hidden="true"></i>
           No schedules registered yet.
         </td>
